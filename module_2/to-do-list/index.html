@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple To-Do App</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f7f7f7; margin: 0; padding: 0; }
+        .container { max-width: 400px; margin: 40px auto; background: #fff; padding: 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        h2 { text-align: center; }
+        input, button { width: 100%; padding: 8px; margin: 8px 0; }
+        ul { list-style: none; padding: 0; }
+        li { background: #eee; margin: 6px 0; padding: 8px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
+        .done { text-decoration: line-through; color: #888; }
+        .notification { background: #dff0d8; color: #3c763d; padding: 8px; border-radius: 4px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>To-Do App</h2>
+    <div id="notification" class="notification" style="display:none;"></div>
+    <div id="auth">
+        <input type="text" id="username" placeholder="Username">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="register()">Register</button>
+        <button onclick="login()">Login</button>
+    </div>
+    <div id="main" style="display:none;">
+        <button onclick="logout()">Logout</button>
+        <h3>Your To-Dos</h3>
+        <ul id="tasks"></ul>
+        <input type="text" id="newtask" placeholder="New task">
+        <button onclick="addTask()">Add Task</button>
+    </div>
+</div>
+<script>
+const API = 'http://127.0.0.1:8000';
+let token = '';
+let ws = null;
+
+function showNotification(msg) {
+    const n = document.getElementById('notification');
+    n.innerText = msg;
+    n.style.display = 'block';
+    setTimeout(() => n.style.display = 'none', 3000);
+}
+
+function register() {
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    fetch(API + '/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.msg) showNotification('Registered! Now login.');
+        else showNotification(data.detail || 'Registration failed');
+    });
+}
+
+function login() {
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    fetch(API + '/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.access_token) {
+            token = data.access_token;
+            document.getElementById('auth').style.display = 'none';
+            document.getElementById('main').style.display = 'block';
+            getTasks();
+            connectWS();
+        } else {
+            showNotification(data.detail || 'Login failed');
+        }
+    });
+}
+
+function logout() {
+    token = '';
+    document.getElementById('auth').style.display = 'block';
+    document.getElementById('main').style.display = 'none';
+    if (ws) ws.close();
+}
+
+function getTasks() {
+    fetch(API + '/tasks', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(r => r.json())
+    .then(tasks => {
+        const ul = document.getElementById('tasks');
+        ul.innerHTML = '';
+        tasks.forEach(t => {
+            const li = document.createElement('li');
+            li.innerHTML = `<span class="${t.completed ? 'done' : ''}">${t.title}</span> <button onclick="toggleTask(${t.id}, ${!t.completed})">${t.completed ? 'Undo' : 'Done'}</button>`;
+            ul.appendChild(li);
+        });
+    });
+}
+
+function addTask() {
+    const title = document.getElementById('newtask').value;
+    fetch(API + '/tasks?title=' + encodeURIComponent(title), {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(r => r.json())
+    .then(task => {
+        getTasks();
+        showNotification('Task added!');
+        if (ws) ws.send('Task added');
+    });
+}
+
+function toggleTask(id, completed) {
+    fetch(API + `/tasks/${id}?completed=${completed}`, {
+        method: 'PUT',
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(r => r.json())
+    .then(task => {
+        getTasks();
+        showNotification('Task updated!');
+        if (ws) ws.send('Task updated');
+    });
+}
+
+function connectWS() {
+    ws = new WebSocket('ws://127.0.0.1:8000/ws');
+    ws.onmessage = function(event) {
+        showNotification('WebSocket: ' + event.data);
+        getTasks();
+    };
+    ws.onopen = function() {
+        ws.send('Hello from frontend');
+    };
+    ws.onclose = function() {
+        showNotification('WebSocket disconnected');
+    };
+}
+</script>
+</body>
+</html>
