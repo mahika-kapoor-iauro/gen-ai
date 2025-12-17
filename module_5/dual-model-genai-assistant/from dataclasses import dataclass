@@ -1,0 +1,19 @@
+from dataclasses import dataclass
+from typing import Optional, List
+
+@dataclass
+class ResearchOutput:
+    """Claude's research findings"""
+    topic: str
+    key_findings: List[str]
+    insights: List[str]
+    assumptions: Optional[List[str]]
+    raw_response: str
+
+@dataclass
+class SummaryOutput:
+    """OpenAI's structured summary"""
+    summary: str
+    tone: str
+    word_count: int
+    format_type: str  # "report", "blog", "linkedin"

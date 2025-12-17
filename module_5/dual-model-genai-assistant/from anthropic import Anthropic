@@ -1,0 +1,103 @@
+from anthropic import Anthropic
+from src.config.settings import settings
+from src.types.models import ResearchOutput
+
+class ClaudeResearchClient:
+    """
+    Claude handles deep research and reasoning using Thread API.
+    Maintains conversational context for iterative research.
+    """
+    
+    def __init__(self):
+        self.client = Anthropic()
+        self.model = settings.CLAUDE_MODEL
+        self.conversation_history = []
+    
+    def research_topic(self, topic: str) -> ResearchOutput:
+        """
+        Perform structured research on a topic using multi-turn conversation.
+        Claude asks clarifying questions and builds comprehensive understanding.
+        """
+        
+        # Initial research prompt
+        system_prompt = """You are an expert research assistant. Your role is to:
+1. Deeply analyze research topics
+2. Identify key findings and insights
+3. Ask clarifying questions when needed
+4. Provide structured, well-organized output
+
+Format your final response as JSON with:
+- key_findings: array of main discoveries
+- insights: array of deep insights
+- assumptions: array of assumptions made"""
+        
+        messages = [
+            {
+                "role": "user",
+                "content": f"Please research the following topic and provide structured findings:\n\nTopic: {topic}"
+            }
+        ]
+        
+        # Store in conversation history for context
+        self.conversation_history.append({"role": "user", "content": messages[0]["content"]})
+        
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=settings.CLAUDE_MAX_TOKENS,
+            system=system_prompt,
+            messages=messages
+        )
+        
+        assistant_response = response.content[0].text
+        self.conversation_history.append({"role": "assistant", "content": assistant_response})
+        
+        # Parse response
+        return self._parse_research_output(topic, assistant_response)
+    
+    def ask_followup(self, question: str) -> str:
+        """Ask a follow-up question maintaining thread context"""
+        
+        self.conversation_history.append({"role": "user", "content": question})
+        
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=settings.CLAUDE_MAX_TOKENS,
+            messages=self.conversation_history
+        )
+        
+        assistant_response = response.content[0].text
+        self.conversation_history.append({"role": "assistant", "content": assistant_response})
+        
+        return assistant_response
+    
+    def _parse_research_output(self, topic: str, response: str) -> ResearchOutput:
+        """Extract structured data from Claude's response"""
+        # Simple parsing - in production, use JSON extraction
+        import json
+        
+        try:
+            # Attempt to extract JSON from response
+            json_start = response.find("{")
+            json_end = response.rfind("}") + 1
+            if json_start != -1 and json_end > json_start:
+                data = json.loads(response[json_start:json_end])
+            else:
+                data = {
+                    "key_findings": ["See raw response for details"],
+                    "insights": ["See raw response for details"],
+                    "assumptions": []
+                }
+        except:
+            data = {
+                "key_findings": ["See raw response for details"],
+                "insights": [],
+                "assumptions": []
+            }
+        
+        return ResearchOutput(
+            topic=topic,
+            key_findings=data.get("key_findings", []),
+            insights=data.get("insights", []),
+            assumptions=data.get("assumptions", []),
+            raw_response=response
+        )

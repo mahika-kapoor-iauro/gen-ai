@@ -1,0 +1,36 @@
+from src.models.claude import ClaudeResearchClient
+from src.models.openai import OpenAISummaryClient
+
+class DualModelAssistant:
+    """
+    Orchestrates Claude (research) and OpenAI (summary) models.
+    - Claude: Deep research and reasoning
+    - OpenAI: Structured summarization and creative output
+    """
+    
+    def __init__(self):
+        self.claude = ClaudeResearchClient()
+        self.openai = OpenAISummaryClient()
+    
+    def research_and_summarize(self, topic: str, output_format: str = "report"):
+        """
+        Complete workflow: research topic → summarize findings
+        """
+        print(f"\n🔬 Researching: {topic}")
+        print("-" * 50)
+        
+        # Step 1: Claude researches
+        research = self.claude.research_topic(topic)
+        
+        print(f"\n✓ Research Complete")
+        print(f"Key Findings: {len(research.key_findings)}")
+        print(f"Insights: {len(research.insights)}")
+        
+        # Step 2: OpenAI summarizes
+        print(f"\n📝 Generating {output_format} summary...")
+        summary = self.openai.summarize_research(research, output_format)
+        
+        return {
+            "research": research,
+            "summary": summary
+        }

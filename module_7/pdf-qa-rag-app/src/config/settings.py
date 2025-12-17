@@ -1,0 +1,6 @@
+API_KEY = "your_api_key_here"
+MODEL_NAME = "gpt-3.5-turbo"
+EMBEDDING_MODEL = "text-embedding-ada-002"
+PDF_DIRECTORY = "data/pdfs"
+VECTOR_STORE_PATH = "data/vector_store.json"
+LOG_LEVEL = "INFO"

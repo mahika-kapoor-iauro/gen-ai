@@ -1,0 +1,72 @@
+from openai import OpenAI
+from src.config.settings import settings
+from src.types.models import SummaryOutput, ResearchOutput
+
+class OpenAISummaryClient:
+    """
+    OpenAI handles concise summarization and creative output.
+    Uses structured outputs for consistent JSON responses.
+    """
+    
+    def __init__(self):
+        self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        self.model = settings.OPENAI_MODEL
+    
+    def summarize_research(self, research: ResearchOutput, format_type: str = "report") -> SummaryOutput:
+        """
+        Convert Claude's research into a concise, structured summary.
+        format_type: "report", "blog", or "linkedin"
+        """
+        
+        # Build context from research
+        research_context = f"""
+Research Topic: {research.topic}
+
+Key Findings:
+{chr(10).join(f"- {f}" for f in research.key_findings)}
+
+Insights:
+{chr(10).join(f"- {i}" for i in research.insights)}
+"""
+        
+        prompts = {
+            "report": f"""Create a professional 200-300 word summary suitable for a business report.
+Tone: Neutral, factual, data-driven.
+{research_context}""",
+            
+            "blog": f"""Convert this research into an engaging 200-300 word blog introduction.
+Tone: Conversational, accessible, engaging.
+Hook readers with the most interesting finding first.
+{research_context}""",
+            
+            "linkedin": f"""Create a professional 200-300 word LinkedIn post based on this research.
+Tone: Inspiring, thought-leadership, industry-relevant.
+Include a call-to-action or question to encourage engagement.
+{research_context}"""
+        }
+        
+        prompt = prompts.get(format_type, prompts["report"])
+        
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=settings.OPENAI_MAX_TOKENS,
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+        )
+        
+        summary_text = response.content[0].text
+        
+        return SummaryOutput(
+            summary=summary_text,
+            tone=self._determine_tone(format_type),
+            word_count=len(summary_text.split()),
+            format_type=format_type
+        )
+    
+    def _determine_tone(self, format_type: str) -> str:
+        tones = {"report": "neutral", "blog": "conversational", "linkedin": "professional"}
+        return tones.get(format_type, "neutral")
