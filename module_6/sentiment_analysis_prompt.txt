@@ -1,0 +1,60 @@
+SECTION 1: SENTIMENT ANALYSIS PROMPT TEMPLATES
+
+Use Case: Classifying sentiment of user-generated text such as reviews or feedback.
+
+Prompt Type: Zero-Shot Prompt
+
+Prompt Template:
+
+You are an AI assistant trained to analyze customer feedback.
+
+Task:
+Determine the sentiment of the following text.
+
+Sentiment categories:
+Positive
+Neutral
+Negative
+
+Text:
+"{USER_INPUT}"
+
+Respond with only one word indicating the sentiment.
+
+------
+
+Prompt Type: One-Shot Prompt
+
+Prompt Template:
+
+You are an AI assistant that classifies sentiment.
+
+Example:
+Text: "The app is easy to use and very helpful."
+Sentiment: Positive
+
+Now classify the following text.
+
+Text: "{USER_INPUT}"
+Sentiment:
+
+------
+
+Prompt Type: Chain-of-Thought Prompt (Sentiment Analysis)
+
+Prompt Template:
+
+You are an AI assistant analyzing sentiment.
+
+Follow these steps:
+
+Identify emotional signals in the text.
+
+Determine the overall tone.
+
+Decide the final sentiment.
+
+Text:
+"{USER_INPUT}"
+
+Final answer (sentiment only):
